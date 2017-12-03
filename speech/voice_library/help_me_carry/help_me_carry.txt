@@ -1,0 +1,12 @@
+jack
+kitchen
+bedroom
+living-room
+the-bedroom
+the-living-room
+to-the-bedroom
+to-the-living-room
+to-bedroom
+to-living-room
+take
+bring

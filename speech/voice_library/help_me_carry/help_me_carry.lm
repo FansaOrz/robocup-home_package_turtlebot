@@ -1,0 +1,97 @@
+Language model created by QuickLM on Mon Nov  6 05:53:15 EST 2017
+Copyright (c) 1996-2010 Carnegie Mellon University and Alexander I. Rudnicky
+
+The model is in standard ARPA format, designed by Doug Paul while he was at MITRE.
+
+The code that was used to produce this language model is available in Open Source.
+Please visit http://www.speech.cs.cmu.edu/tools/ for more information
+
+The (fixed) discount mass is 0.5. The backoffs are computed using the ratio method.
+This model based on a corpus of 18 sentences and 20 words
+
+\data\
+ngram 1=20
+ngram 2=36
+ngram 3=18
+
+\1-grams:
+-0.7782 </s> -0.3010
+-0.7782 <s> -0.2218
+-2.0334 BEDROOM -0.2218
+-2.0334 BRING -0.2218
+-2.0334 FOLLOW -0.2218
+-2.0334 FOLLOW-ME -0.2218
+-2.0334 JACK -0.2218
+-2.0334 KAMERIDER -0.2218
+-2.0334 LIVING-ROOM -0.2218
+-2.0334 STOP -0.2218
+-2.0334 STOP-FOLLOWING -0.2218
+-2.0334 STOP-FOLLOWING-ME -0.2218
+-2.0334 TAKE -0.2218
+-2.0334 THE-BEDROOM -0.2218
+-2.0334 THE-LIVING-ROOM -0.2218
+-2.0334 TO-BEDROOM -0.2218
+-2.0334 TO-KITCHEN -0.2218
+-2.0334 TO-LIVING-ROOM -0.2218
+-2.0334 TO-THE-BEDROOM -0.2218
+-2.0334 TO-THE-LIVING-ROOM -0.2218
+
+\2-grams:
+-1.5563 <s> BEDROOM 0.0000
+-1.5563 <s> BRING 0.0000
+-1.5563 <s> FOLLOW 0.0000
+-1.5563 <s> FOLLOW-ME 0.0000
+-1.5563 <s> JACK 0.0000
+-1.5563 <s> KAMERIDER 0.0000
+-1.5563 <s> LIVING-ROOM 0.0000
+-1.5563 <s> STOP 0.0000
+-1.5563 <s> STOP-FOLLOWING 0.0000
+-1.5563 <s> STOP-FOLLOWING-ME 0.0000
+-1.5563 <s> TAKE 0.0000
+-1.5563 <s> THE-BEDROOM 0.0000
+-1.5563 <s> THE-LIVING-ROOM 0.0000
+-1.5563 <s> TO-BEDROOM 0.0000
+-1.5563 <s> TO-KITCHEN 0.0000
+-1.5563 <s> TO-LIVING-ROOM 0.0000
+-1.5563 <s> TO-THE-BEDROOM 0.0000
+-1.5563 <s> TO-THE-LIVING-ROOM 0.0000
+-0.3010 BEDROOM </s> -0.3010
+-0.3010 BRING </s> -0.3010
+-0.3010 FOLLOW </s> -0.3010
+-0.3010 FOLLOW-ME </s> -0.3010
+-0.3010 JACK </s> -0.3010
+-0.3010 KAMERIDER </s> -0.3010
+-0.3010 LIVING-ROOM </s> -0.3010
+-0.3010 STOP </s> -0.3010
+-0.3010 STOP-FOLLOWING </s> -0.3010
+-0.3010 STOP-FOLLOWING-ME </s> -0.3010
+-0.3010 TAKE </s> -0.3010
+-0.3010 THE-BEDROOM </s> -0.3010
+-0.3010 THE-LIVING-ROOM </s> -0.3010
+-0.3010 TO-BEDROOM </s> -0.3010
+-0.3010 TO-KITCHEN </s> -0.3010
+-0.3010 TO-LIVING-ROOM </s> -0.3010
+-0.3010 TO-THE-BEDROOM </s> -0.3010
+-0.3010 TO-THE-LIVING-ROOM </s> -0.3010
+
+\3-grams:
+-0.3010 <s> BEDROOM </s>
+-0.3010 <s> BRING </s>
+-0.3010 <s> FOLLOW </s>
+-0.3010 <s> FOLLOW-ME </s>
+-0.3010 <s> JACK </s>
+-0.3010 <s> KAMERIDER </s>
+-0.3010 <s> LIVING-ROOM </s>
+-0.3010 <s> STOP </s>
+-0.3010 <s> STOP-FOLLOWING </s>
+-0.3010 <s> STOP-FOLLOWING-ME </s>
+-0.3010 <s> TAKE </s>
+-0.3010 <s> THE-BEDROOM </s>
+-0.3010 <s> THE-LIVING-ROOM </s>
+-0.3010 <s> TO-BEDROOM </s>
+-0.3010 <s> TO-KITCHEN </s>
+-0.3010 <s> TO-LIVING-ROOM </s>
+-0.3010 <s> TO-THE-BEDROOM </s>
+-0.3010 <s> TO-THE-LIVING-ROOM </s>
+
+\end\

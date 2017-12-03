@@ -1,0 +1,266 @@
+
+#include <ros/ros.h>
+#include <image_transport/image_transport.h>
+#include <cv_bridge/cv_bridge.h>
+#include <sensor_msgs/image_encodings.h>
+//#include <object/pos.h>
+#include <std_msgs/Int32.h> 
+#include <std_msgs/Empty.h>
+#include <std_msgs/String.h>
+#include <geometry_msgs/Twist.h>
+
+#include <nav_msgs/Odometry.h>
+
+
+
+using namespace std;
+#define PI 3.1415926
+struct PathPoint
+{
+	int state;
+	float vel;
+	float time;
+};
+const int que_num = 5;
+const int itm_num = 4;
+//char question[que_num][30] = { "Is it solid ?","Is it liquid ?",
+//"Is it electronic ?","Is it esculent ?","Is it fruit ?" };//问题
+char question[que_num] = { 'a','b','c','d','e' };//问题
+													 //char itm_name[itm_num][20] = { "Apple","Water","Glass","Television" };//物品
+char itm_name[itm_num]= { 'f','g','h','i' };//物品
+bool itm_feat[itm_num][que_num] = { { 1,0,0,1,1 } ,{ 0,1,0,1,0 },
+{1,0,0,0,0 },{ 1,0,1,0,0 } };//物品的性质
+bool is_que[que_num];//判断问题是否问过；
+void strcpy(char *ch1, char *ch2) {
+	int i = 0;
+	while (ch2[i] != '\0') {
+		ch1[i] = ch2[i];
+		i++;
+	}
+	ch1[i] = '\0';
+}
+struct item {
+	char itm_name;
+	bool itm_feat[que_num];
+};
+class item_link {
+public:
+	item itm;
+	item_link *next;
+	item_link(char *name, bool *feat, item_link *nt) {
+		next = nt;
+		itm.itm_name=name;
+		for (int i = 0; i < que_num; i++) {
+			itm.itm_feat[i] = feat[i];
+		}
+		next = nt;
+	}
+};
+class itm_list {
+	item_link *head;
+	item_link *curr;
+public:
+	itm_list();
+	void remove();
+	int  juge(int i_n);
+	int ansr_reme(char answer, int sub);
+	char out_anser();//输出答案；
+};
+itm_list::itm_list() {
+	int i;
+	bool head_feat[que_num];
+	char head_name[2] = { "0" };
+	for (i = 0; i < que_num; i++)
+		head_feat[i] = 0;
+	head = new item_link(head_name, head_feat, NULL);
+	curr = head;
+	for (i = 0; i < itm_num; i++) {
+		curr->next = new item_link(itm_name[i], itm_feat[i], curr->next);
+		curr = curr->next;
+	}
+}
+void itm_list::remove() {
+	curr->next = curr->next->next;
+}
+int itm_list::juge(int i_n) {
+	int i, j, perct[que_num], sum, sub = 0;
+	float proper;
+	for (i = 0; i < que_num; i++) {
+		if (is_que[i] == 1) {
+			curr = head;
+			sum = 0;
+			for (j = 0; curr->next != NULL; j++) {
+				sum += curr->next->itm.itm_feat[i];
+				curr = curr->next;
+			}
+			perct[i] = sum;
+		}
+	}
+	proper = 1000;
+	for (i = 0; i < que_num; i++) {
+		if (is_que[i] == 1) {
+			float temp = fabs(float(i_n / 2) - perct[i]);
+			if (temp < proper) {
+				proper = temp;
+				sub = i;
+			}
+		}
+	}
+	return sub;
+}
+int itm_list::ansr_reme(char answer, int sub) {//输入问题后进行淘汰
+	curr = head;
+	int reme_num = 0;
+	while (curr->next != NULL) {
+		if (curr->next->itm.itm_feat[sub] != answer) {
+			remove();
+			reme_num++;
+		}
+		else {
+			curr = curr->next;
+		}
+	}
+	return reme_num;
+}
+char itm_list::out_anser() {
+	if (head->next != NULL) {
+		return head->next->itm.itm_name;
+	}
+	else
+		return 's';
+}
+
+vector<PathPoint> vppt;             //储存反馈调节时的调节参数
+
+ros::Publisher  move_pub;
+ros::Publisher voice_pub;
+std_msgs::String say;
+void turn_robot(float theta, float time)
+{
+	geometry_msgs::Twist vel;
+	int count = 0;
+	//float time = 2;
+	ros::Rate loop_rate(10);
+	int num = time * 10;
+	PathPoint pt;
+	//转90度
+	//float theta = 5;
+	//cout<<"theta:"<<theta<<endl;
+	float theta2 = theta / time;
+	vel.angular.z = theta2;
+	count = 0;
+	num = time * 10;
+	while (count < num)
+	{
+		count++;
+		move_pub.publish(vel);
+		loop_rate.sleep();
+	}
+	pt.state = 0;
+	pt.time = time;
+	pt.vel = vel.angular.z;
+	vppt.push_back(pt);
+	vel.angular.z = 0.0;
+	move_pub.publish(vel);
+	cout << "转弯\n";
+	sleep(1);
+}
+void forward_robot(float x, float time)
+{
+	geometry_msgs::Twist vel;
+	int count = 0;
+	//float time = 4;
+	vel.linear.x = x / time;
+	ros::Rate loop_rate(10);
+	int num = time * 10;
+	//cout<<"armCallback1()\n";
+	while (count < num)
+	{
+		count++;
+		move_pub.publish(vel);
+		loop_rate.sleep();
+	}
+	PathPoint pt;
+	pt.state = 0;
+	pt.time = time;
+	pt.vel = vel.linear.x;
+	vppt.push_back(pt);
+	vel.linear.x = 0.0;
+	move_pub.publish(vel);
+	cout << "直行\n";
+	sleep(1);
+}
+void ssvepCallback(const std_msgs::String::ConstPtr& msg);
+int main(int argc, char **argv)
+{
+	ros::init(argc, argv, "robot_move");
+	ros::NodeHandle nh_;
+	voice_pub = nh_.advertise<std_msgs::String>("/recognizer/output", 1);
+	ros::Subscriber move_sub = nh_.subscribe("socket2topic_nd", 1000, ssvepCallback);        //订阅arm的消息
+	move_pub = nh_.advertise<geometry_msgs::Twist>("cmd_vel_mux/input/navi", 1);  //移动mobile_base/commands/velocity
+	ros::spin();
+
+	return 0;
+}
+void ssvepCallback(const std_msgs::String::ConstPtr& msg)
+{
+	char cmd = 0;
+	string value = msg->data;
+	cmd = value[0];
+	bool c;
+	if (cmd == 'a') c = 1;
+	if (cmd == 'b')c = 0;
+	int q_n = que_num, i_n = itm_num, i, sub;
+	bool answer;
+	itm_list list;
+	char result;
+	for (i = 0; i < que_num; i++) {
+		is_que[i] = 1;
+	}
+	while (i_n > 1) {
+		sub = list.juge(i_n);
+		is_que[sub] = 0;
+		result = question[sub];
+		answer = cmd;
+		i_n -= list.ansr_reme(answer, sub);
+	}
+	result=list.out_anser();
+	say.data = result;
+	voice_pub.publish(say);
+	//    
+	//  //cout << "cmd = " << cmd <<"\tangle = " << angle << endl;   
+	//  switch(cmd)
+	//  {
+	//      case 'f':    
+	//          cout<<"\tforward\n";
+	//          say.data = "forward";
+	//          voice_pub.publish(say); 
+	//          forward_robot(0.4,3);
+	//          break;
+	//      case 'b':
+	//          cout<<"\tbackward\n";
+	//          say.data = "backward";
+	//          voice_pub.publish(say); 
+	//          forward_robot(-0.4,3);
+	//          break;
+	//      case 'l':              
+	//          cout<<"\tturn left\n"; 
+	//          say.data = "turn left";
+	//          voice_pub.publish(say); 
+	//          turn_robot(2.6,2);
+	//          break;
+	//      case 'r':
+	//          cout<<"\tturn right\n";
+	//          say.data = "turn right";
+	//          voice_pub.publish(say); 
+	//          turn_robot(-2.6,2);
+	//          break;
+	//      case 's':
+	//	cout<<"\tstop\n";
+	//	forward_robot(0,1);
+	//default:
+	//    break;
+	//  }
+	//  //move_pub.publish(vel);
+
+}

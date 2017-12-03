@@ -1,0 +1,41 @@
+
+
+
+
+
+<launch>
+      <include file="$(find turtlebot_follower)/launch/includes/velocity_smoother.launch.xml">
+      <arg name="nodelet_manager"  value="/mobile_base_nodelet_manager"/>
+      <arg name="navigation_topic" value="/cmd_vel_mux/input/navi"/>
+  </include>
+
+ <include file="$(find turtlebot_follower)/launch/includes/safety_controller.launch.xml"/>
+ <include file="$(find turtlebot_bringup)/launch/3dsensor.launch">
+    <arg name="rgb_processing" value="false" />
+    <arg name="depth_registration" value="false" />
+    <arg name="depth_processing" value="false" />
+    <arg name="scan_topic"       value="/scan" />
+  </include>
+<!-- 加载地图 -->
+  <arg name="map_file" default="/home/zjs/2017_ap/src/navigation_test/maps/DemoMap.yaml" /> 
+  <node pkg="map_server" type="map_server" name="map_server" args="$(arg map_file)" />
+    
+  <!-- 设置amcl-->
+  <arg name="initial_pose_x" default="1.8315198099"/> <!-- 设置初始坐标 -->
+  <arg name="initial_pose_y" default="-2.70883212347"/> 
+  <arg name="initial_pose_a" default="-1"/>
+
+  <include file="/opt/ros/indigo/share/turtlebot_navigation/launch/includes/amcl/amcl.launch.xml">
+    <arg name="initial_pose_x" value="$(arg initial_pose_x)"/>
+    <arg name="initial_pose_y" value="$(arg initial_pose_y)"/>
+    <arg name="initial_pose_a" value="$(arg initial_pose_a)"/>
+  </include>
+
+  <!-- 加载move_base -->
+  <include file="/opt/ros/indigo/share/turtlebot_navigation/launch/includes/move_base.launch.xml"/>
+
+  <!-- 3D visualization -->
+  <!-- Rviz -->
+  <node name="rviz" pkg="rviz" type="rviz" respawn="true" args="-d $(find navigation_test)/rviz/navigation.rviz"/>
+  <node pkg="navigation_test" type="speech_help" name="speech_help" launch-prefix="xterm -e" /> 
+</launch>

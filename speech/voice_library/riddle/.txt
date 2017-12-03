@@ -1,0 +1,14 @@
+kitchen
+living-room
+me
+ready
+same
+stop
+where
+living room
+help
+carry
+jack
+open-the-door
+door
+

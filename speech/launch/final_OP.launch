@@ -1,0 +1,13 @@
+<launch>
+
+  <node name="server2topic" pkg="socket" type="socket2topic_nd" output="screen"/>
+
+  <node name="soundplay_node" pkg="sound_play" type="soundplay_node.py" output="screen"/>
+
+  <node name="talkback" pkg="speech" type="final_OP.py" output="screen">
+  	<param name="voice" value="voice_cmu_us_clb_arctic_clunits"/>
+  	<param name="wavepath" value="$(find speech)/sounds"/>
+	
+  </node>
+
+</launch>

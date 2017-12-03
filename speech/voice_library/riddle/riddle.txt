@@ -1,0 +1,50 @@
+children
+adults
+elders
+females
+males
+women
+men
+boys
+girls
+standing
+sitting
+lying
+waving
+rising left arm
+rising right arm
+pointing left
+pointing right
+female
+male
+woman
+man
+boy
+girl
+heaviest
+smallest
+biggest
+lightest
+heavier
+smaller
+bigger
+lighter
+in-which-room-is-the
+where-is-located-the
+how-many-doors-has-the
+how-many
+are-in-the
+are-in-the-crowd
+how-many-people-in-the-crowd-are
+
+
+
+
+
+
+
+
+
+
+
+

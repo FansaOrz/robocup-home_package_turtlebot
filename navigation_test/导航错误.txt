@@ -1,0 +1,7 @@
+[ WARN] [1489196760.040628270]: Could not get robot pose, cancelling pose reconfiguration
+[ERROR] [1489196760.440979552]: Extrapolation Error looking up robot pose: Lookup would require extrapolation into the past.  Requested time 1489196723.399948003 but the earliest data is at time 1489196750.435294477, when looking up transform from frame [base_footprint] to frame [map]
+ You must specify at least three points for the robot footprint, reverting to previous footprint.
+
+打不开可视化界面
+[rviz-45] process has died [pid 10264, exit code -11, cmd /opt/ros/indigo/lib/rviz/rviz -d /home/isi/2017_ws/src/turtlebot_rviz_launchers/rviz/navigation.rviz __name:=rviz __log:=/home/isi/.ros/log/c9c00cca-2801-11e7-9461-ac2b6eb423d2/rviz-45.log].
+log file: /home/isi/.ros/log/c9c00cca-2801-11e7-9461-ac2b6eb423d2/rviz-45*.log

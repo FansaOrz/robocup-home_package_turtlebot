@@ -1,0 +1,16 @@
+/***********************************************************
+Author: Zheng Haosi
+Date: 3/17/2017
+Abstract: 此文档用于调整导航参数，具体原理可参见navi_guide
+************************************************************/
+//改变tele_op的速度参数
+velocity_smoother.launch.xml
+
+//更改代价地图参数
+/home/isi/2017_ws/src/turtlebot_navigation/param/costmap_common_params.yaml
+
+//更改全局路径规划参数
+/home/isi/2017_ws/src/turtlebot_navigation/param/global_planner_params.yaml
+
+//更改局部路径规划参数（动态窗口算法）
+/home/isi/2017_ws/src/turtlebot_navigation/param/dwa_local_planner_params.yaml

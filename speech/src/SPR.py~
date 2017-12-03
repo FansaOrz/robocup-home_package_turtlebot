@@ -1,0 +1,881 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+
+"""
+    play riddle game
+"""
+
+import roslib; roslib.load_manifest('speech')
+import rospy
+import re
+import os
+from std_msgs.msg import String
+from std_msgs.msg import Int8
+import time
+from sound_play.libsoundplay import SoundClient
+import xml.etree.ElementTree as ET
+
+class spr:
+	def __init__(self):
+
+		rospy.on_shutdown(self.cleanup)
+		self.voice = rospy.get_param("~voice", "voice_cmu_us_rms_cg_clunits")
+		self.question_start_signal = rospy.get_param("~question_start_signal", "")
+		
+		#for arena question
+		self.room=['bedroom','living room','bacony','kitchen','corridor','entrance']
+
+		self.if_say=0
+		#for crowd question
+		self.appl=['children','adults','elders']
+		self.gppl=['females','males','women','men','boys','girls']
+		self.people=self.appl+self.gppl
+		self.posprs=['standing','sitting','lying']
+		self.posppl=['standing','sitting','lying','standing or sitting','standing or lying','sitting or lying']
+		self.gesture=['waving','rising left arm','rising right arm','pointing left','pointing right']
+		self.gprsng=['male or female','man or woman','boy or girl']
+		self.gprsn=['female','male','woman','man','boy','girl']
+		self.color=['red','blue','white','black','green','yellow']
+		self.w=0
+
+		#for object question
+		#read object.xml
+		self.adja=['heaviest','smallest','biggest','lightest']
+		self.adjr=['heavier','smaller','bigger','lighter']
+		self.size_order = (
+			'fork', 'cutlery', 'spoon', 'cutlery', 'apple', 'fruit', 'orange', 'fruit',
+			'onion', 'food', 'chopsticks', 'cutlery', 'candy', 'snack', 'chewing gum', 'snack',
+			'jelly', 'snack', 'cold brew', 'drink', 'coke', 'drink', 'hair spary', 'cleaning stuff',
+			'moisturizer', 'cleaning stuff', 'asience', 'cleaning stuff', 'corn', 'food', 'radish', 'food',
+			'aquarius', 'drink', 'bowl', 'container', 'soup container', 'container', 'fries', 'snack',
+			'cup star', 'snack', 'curry', 'snack', 'shampoo', 'cleaning stuff', 'green tea', 'drink',
+			'bread', 'food', 'plate', 'container')
+		self.weight_order= (
+            'fork','kitchen','sideboard',               'spoon','kitchen','sideboard',
+            'apple','balcony','bistro table',           'orange', 'balcony','bistro table',
+            'onion','kitchen','kitchen shelf',          'chopsticks','kitchen','sideboard',
+            'candy', 'kitchen','kitchen rack',          'chewing gum','kitchen','kitchen rack',
+            'jelly', 'kitchen','kitchen rack',          'cold brew', 'kitchen','kitchen counter',
+            'coke','kitchen','kitchen counter',         'hair spary','living room','right rack',
+            'moisturizer','living room','right rack',   'asience', 'living room','right rack',
+            'corn', 'kitchen','kitchen shelf',          'radish','kitchen','kitchen shelf',
+            'aquarius', 'kitchen','kitchen counter',    'bowl', 'living room','left rack',
+            'soup container','living room','left rack', 'fries', 'kitchen','kitchen rack',
+            'cup star','kitchen','kitchen rack',        'curry', 'kitchen','kitchen rack',
+            'shampoo','living room','right rack',       'green tea','kitchen','kitchen counter',
+            'bread','kitchen','kitchen shelf',          'plate' 'living room','left rack',
+            'container','living room','left rack',      'cleaning stuff','living room','right rack',
+            'cutlery','kitchen','sideboard',            'drink','kitchen','kitchen counter',
+            'fruit','balcony','bistro table',           'food','kitchen','kitchen shelf',
+            'snack','kitchen','kitchen rack')
+		self.category = ('container', 3, 'cleaning stuff', 4, 'cutlery', 3, 'drink', 4, 'fruit', 2, 'food', 4, 'snack', 6)
+		self.object_colour = (
+                    'fork','white',                 'spoon','white',              'apple','red',                        'orange','orange',
+                    'onion', 'white',               'chopsticks','white',         'candy','red',                        'chewing gum','white',
+                    'jelly', 'white and yellow',    'cold brew','blue',           'coke','red and black',               'hair spary','white and blue',
+                    'moisturizer','white and blue', 'asience','white and red',    'corn','yellow',                      'radish', 'white and green',
+                    'aquarius','blue',              'bowl','black and red',       'soup container','white and black',   'fries', 'yellow and red',
+                    'cup star','white and green',   'curry', 'white and yellow',  'shampoo','blue',                     'green tea','green',
+                    'bread','red',                  'plate','white')
+		self.location=('desk','living room','left rack','living room','right rack','living room',
+					   'bookcase','living room','sofa','living room','coffee table','living room',
+					   'TV','living room','sideboard','kitchen','kitchen table','kitchen',
+					   'kitchen shelf','kitchen','kitchen counter','kitchen','fridge','kitchen',
+					   'kitchen rack','kitchen','bistro table','balcony','left planks','balcony',
+					   'right planks','balcony','balcony shelf','balcony','entrance shelf','entrance',
+					   'little desk','bedroom','teepee','bedroom','bed','bedroom')
+		# Create the sound client object
+		self.soundhandle = SoundClient() 
+		rospy.sleep(5)
+		self.soundhandle.stopAll()
+		self.riddle_turn = rospy.Publisher("turn_signal", String, queue_size= 10)
+		self.soundhandle.say('hello , I want  to  play  riddles',self.voice)
+		rospy.sleep(3)
+		self.soundhandle.say('I will turn back after ten seconds',self.voice)
+		rospy.sleep(3)
+		self.soundhandle.say('ten',self.voice)
+		rospy.sleep(1)
+		self.soundhandle.say('nine',self.voice)
+		self.riddle_turn.publish("turn_robot")#publish msg to nav
+		rospy.sleep(1)
+		self.soundhandle.say('eight',self.voice)
+		rospy.sleep(1)
+		self.soundhandle.say('seven',self.voice)
+		rospy.sleep(1)
+		self.soundhandle.say('six',self.voice)
+		rospy.sleep(1)
+		self.soundhandle.say('five',self.voice)
+		rospy.sleep(1)
+		self.soundhandle.say('four',self.voice)
+		rospy.sleep(1)
+		self.soundhandle.say('three',self.voice)
+		rospy.sleep(1)
+		self.soundhandle.say('two',self.voice)
+		rospy.sleep(1)
+		self.soundhandle.say('one',self.voice)
+		rospy.sleep(1)
+		self.soundhandle.say('here I come',self.voice)
+		rospy.sleep(1)
+		rospy.Subscriber('human_num', String, self.h_num)
+		rospy.Subscriber('female_num', String, self.f_num)
+		rospy.Subscriber('male_num', String, self.m_num)
+		rospy.Subscriber('taking_photo_signal', String, self.remind_people)
+		if self.if_say==0:
+			rospy.Subscriber('recognizer_output', String, self.talk_back)
+
+	def h_num(self,msg):
+		msg.data=msg.data.lower()
+		self.soundhandle.say('I have already taken the photo',self.voice)
+		rospy.sleep(3)
+		self.soundhandle.say('please wait for a moment',self.voice)
+		rospy.sleep(5)
+		self.crowd_num=msg.data
+		print "human number is " + msg.data
+		self.soundhandle.say('human number is  '+msg.data,self.voice)
+		rospy.sleep(4)
+
+	def f_num(self,msg):
+		msg.data=msg.data.lower()
+		print "female number is " + msg.data
+		self.female_num=msg.data
+		self.soundhandle.say('female number is  '+msg.data,self.voice)
+		rospy.sleep(4)
+
+	def m_num(self,msg):
+		msg.data=msg.data.lower()
+		print "male number is " + msg.data
+		self.male_num=msg.data
+		self.soundhandle.say('male number is ' +msg.data,self.voice)
+		rospy.sleep(4)
+		self.soundhandle.say('who wants to play riddles with me',self.voice)
+		rospy.sleep(3.5)
+		self.soundhandle.say('please stand in front of me and wait for five seconds',self.voice)
+		rospy.sleep(8.5)
+		self.soundhandle.say('please ask me after you hear',self.voice)
+		rospy.sleep(3)
+		self.soundhandle.playWave(self.question_start_signal+"/question_start_signal.wav")
+		rospy.sleep(2)
+		self.soundhandle.say('Im ready',self.voice)
+		rospy.sleep(2)
+		self.soundhandle.playWave(self.question_start_signal+"/question_start_signal.wav")
+		rospy.sleep(3)
+		self.w=1
+
+	def answer_How_many_people_are_in_the_crowd(self,msg):
+		msg.data=msg.data.lower()
+		self.soundhandle.say('the answer is there are '+msg.data+' in the crowd',self.voice)
+		rospy.sleep(3.5)
+		self.soundhandle.say('OK I am ready for next question', self.voice)
+		rospy.sleep(3)
+		self.soundhandle.playWave(self.question_start_signal + "/question_start_signal.wav")
+		rospy.sleep(2)
+
+	def remind_people(self, msg):
+		msg.data = msg.data.lower()
+		if msg.data=='start':
+			self.soundhandle.say('Im going to take a photo',self.voice)
+			rospy.sleep(3)
+			self.soundhandle.say('please look at me and smile',self.voice)
+			rospy.sleep(3)
+			self.soundhandle.say('three',self.voice)
+			rospy.sleep(1)
+			self.soundhandle.say('two',self.voice)
+			rospy.sleep(1)
+			self.soundhandle.say('one',self.voice)
+			rospy.sleep(1)
+
+	def talk_back(self, msg):
+		msg.data = msg.data.lower()
+		print msg.data
+		if self.w==0 :
+
+			self.sentence_as_array=msg.data.split('-')
+			self.sentence=msg.data.replace('-',' ')
+			print self.sentence
+			#object
+			# Between the {object 1} and {object 2}, which one is $adjr?
+			if msg.data.find('bigger') > -1 and msg.data.find('between') > -1:
+				self.index = 0
+				while (self.index < len(self.size_order) / 2):
+					print self.index
+					if msg.data.find(self.size_order[2 * self.index]) > -1:#found the first object,this one is the smaller one
+						self.smaller_object = self.size_order[2 * self.index]#store the smaller one
+						self.index += 1#continue finding
+						while (self.index < len(self.size_order) / 2):
+							print self.index
+							if (msg.data.find(self.size_order[2 * self.index])) > -1:#found the bigger one
+								os.system("~/kill_pocketsphinx.sh")
+								rospy.sleep(1)
+								self.if_say=1
+								os.system("~/kill_pocketsphinx.sh")
+								self.soundhandle.say('I heared between the '+self.smaller_object+'and'+
+													 self.size_order[2 * self.index] + 'which one is bigger', self.voice)
+								rospy.sleep(4)
+								self.soundhandle.say('the answer is'+self.size_order[2 * self.index] + 'is bigger', self.voice)
+								rospy.sleep(4)
+								self.soundhandle.say('OK I am ready for next question',self.voice)
+								rospy.sleep(3)
+								os.system("~/run_pocketsphinx.sh")
+								rospy.sleep(1)
+								self.soundhandle.playWave(self.question_start_signal+"/question_start_signal.wav")
+								rospy.sleep(2)
+								break
+							self.index += 1
+						break
+					self.index += 1
+				self.if_say=0
+			elif msg.data.find('smaller') > -1 and msg.data.find('between') > -1:
+				self.index=0
+				while (self.index<len(self.size_order)/2):
+					if msg.data.find(self.size_order[2 * self.index]) > -1:
+						self.smaller_object=self.size_order[2*self.index]
+						self.index+=1
+						while (self.index<len(self.size_order)/2):
+							if (msg.data.find(self.size_order[2 * self.index])) > -1:
+								os.system("~/kill_pocketsphinx.sh")
+								rospy.sleep(1)
+								self.if_say=1
+								self.soundhandle.say(
+									'I heared between the ' + self.smaller_object + 'and' + self.size_order[
+										2 * self.index] + 'which one is smaller', self.voice)
+								rospy.sleep(4)
+								self.soundhandle.say('the answer is' + self.smaller_object + 'is smaller',
+													 self.voice)
+								rospy.sleep(4)
+								self.soundhandle.say('OK I am ready for next question',self.voice)
+								rospy.sleep(3)
+								os.system("~/run_pocketsphinx.sh")
+								rospy.sleep(1)
+								self.soundhandle.playWave(self.question_start_signal+"/question_start_signal.wav")
+								rospy.sleep(2)
+								break
+							self.index+=1
+						break
+					self.index+=1
+				self.if_say=0
+			elif msg.data.find('lighter') > -1 and msg.data.find('between') > -1:
+				self.index = 0
+				while (self.index < len(self.weight_order) / 3):
+					if msg.data.find(self.weight_order[3 * self.index]) > -1:
+						self.lighter_object = self.weight_order[3 * self.index]
+						self.index += 1
+						while (self.index < len(self.weight_order) / 3):
+							if (msg.data.find(self.weight_order[3 * self.index])) > -1:
+								os.system("~/kill_pocketsphinx.sh")
+								rospy.sleep(1)
+								self.if_say=1
+								self.soundhandle.say('I heared between the ' + self.lighter_object
+													 + 'and' + self.weight_order[3 * self.index]
+													 + 'which one is heavier', self.voice)
+								rospy.sleep(4)
+								self.soundhandle.say('the answer is' + self.lighter_object
+													 + 'is smaller',self.voice)
+								rospy.sleep(4)
+								self.soundhandle.say('OK I am ready for next question',self.voice)
+								rospy.sleep(3)
+								os.system("~/run_pocketsphinx.sh")
+								self.soundhandle.playWave(self.question_start_signal+"/question_start_signal.wav")
+								rospy.sleep(2)
+								break
+							self.index += 1
+						break
+					self.index += 1
+				self.if_say=0
+			elif msg.data.find('heavier') > -1 and msg.data.find('between') > -1:
+				self.index = 0
+				while (self.index < len(self.weight_order) / 3):
+					if msg.data.find(self.weight_order[3 * self.index]) > -1:
+						self.lighter_object = self.weight_order[3 * self.index]
+						self.index += 1
+						while (self.index < len(self.weight_order) / 3):
+							if (msg.data.find(self.weight_order[3 * self.index])) > -1:
+								os.system("~/kill_pocketsphinx.sh")
+								rospy.sleep(1)
+								self.soundhandle.say('I heared between the ' + self.lighter_object
+													 + 'and' + self.weight_order[3 * self.index]
+													 + 'which one is heavier', self.voice)
+								rospy.sleep(4)
+								self.soundhandle.say('the answer is' + self.weight_order[3 * self.index]
+													 + 'is smaller',self.voice)
+								rospy.sleep(4)
+								self.soundhandle.say('OK I am ready for next question',self.voice)
+								rospy.sleep(3)
+								os.system("~/run_pocketsphinx.sh")
+								rospy.sleep(1)
+								self.soundhandle.playWave(self.question_start_signal+"/question_start_signal.wav")
+								rospy.sleep(2)
+								break
+							self.index += 1
+						break
+					self.index += 1
+
+			# Do the {object 1} and {object 2} belong to the same category?
+			elif msg.data.find('category') > -1 and msg.data.find('same'):
+				self.index=0
+				for self.index in range(len(self.size_order) / 2):
+					if msg.data.find(self.size_order[2 * self.index]) > -1:#found the first object
+						self.smaller_object=self.size_order[2*self.index]
+						self.category1 = self.size_order[2 * self.index + 1]
+						self.index += 1
+						for self.index in range(len(self.size_order) / 2):
+							if msg.data.find(self.size_order[2 * self.index]) > -1:
+								self.soundhandle.say(' I heared Do the ' + self.smaller_object
+													 + ' and ' + self.size_order[2 * self.index]
+													 + ' belong to the sanme category ', self.voice)
+								rospy.sleep(4)
+								if self.category1 == self.size_order[2 * self.index + 1]:
+									os.system("~/kill_pocketsphinx.sh")
+									rospy.sleep(1)
+									self.soundhandle.say('the answer is yes, they belong to the same category')
+									rospy.sleep(4)
+									self.soundhandle.say('OK I am ready for next question', self.voice)
+									rospy.sleep(3)
+									os.system("~/run_pocketsphinx.sh")
+									rospy.sleep(1)
+									self.soundhandle.playWave(self.question_start_signal + "/question_start_signal.wav")
+									rospy.sleep(2)
+								else:
+									os.system("~/kill_pocketsphinx.sh")
+									rospy.sleep(1)
+									self.soundhandle.say('the answer is no, they belong to the different category')
+									rospy.sleep(4)
+									self.soundhandle.say('OK I am ready for next question', self.voice)
+									rospy.sleep(3)
+									os.system("~/run_pocketsphinx.sh")
+									rospy.sleep(1)
+									self.soundhandle.playWave(self.question_start_signal + "/question_start_signal.wav")
+									rospy.sleep(2)
+							break
+						break
+
+			# To which category belong the {object}?
+			elif msg.data.find('category') > -1 and msg.data.find('belong') > -1:
+				self.index=0
+				for self.index in range(len(self.size_order) / 2):
+					if msg.data.find(self.size_order[2 * self.index]) > -1:
+						os.system("~/kill_pocketsphinx.sh")
+						rospy.sleep(1)
+						self.soundhandle.say('I heared To which category belong the '
+											 + self.size_order[2 * self.index], self.voice)
+						rospy.sleep(4)
+						self.soundhandle.say('the answer is '+self.size_order[2 * self.index] + ' is belong the '
+											 + self.size_order[2 * self.index + 1], self.voice)
+						rospy.sleep(4)
+						self.soundhandle.say('OK I am ready for next question', self.voice)
+						rospy.sleep(3)
+						os.system("~/run_pocketsphinx.sh")
+						rospy.sleep(1)
+						self.soundhandle.playWave(self.question_start_signal + "/question_start_signal.wav")
+						rospy.sleep(2)
+						break
+			# Where can I find a ({object} | {category})?
+			elif msg.data.find('where') > -1 and msg.data.find('find') > -1:
+				self.index=0
+				print msg.data
+				for self.index in range(len(self.weight_order) / 3):
+					if msg.data.find(self.weight_order[3 * self.index]) > -1:
+						os.system("~/kill_pocketsphinx.sh")
+						rospy.sleep(1)
+						self.if_say=1
+						self.soundhandle.say('I heared Where can I find a '
+											 + self.weight_order[3 * self.index], self.voice)
+						rospy.sleep(4)
+						self.soundhandle.say('the answer is '+self.weight_order[3 * self.index] + 'can be found in the '
+											 + self.weight_order[3 * self.index + 2] + ' s '
+											 + self.weight_order[3 * self.index + 1], self.voice)
+						rospy.sleep(4)
+						self.soundhandle.say('OK I am ready for next question', self.voice)
+						rospy.sleep(3)
+						os.system("~/run_pocketsphinx.sh")
+						rospy.sleep(1)
+						self.soundhandle.playWave(self.question_start_signal + "/question_start_signal.wav")
+						rospy.sleep(2)
+						self.if_say=0
+						break
+			# How many {category} there are?
+			elif msg.data.find('how many') > -1 and msg.data.find('there are') > -1:
+				for index in range(len(self.category)):
+					if msg.data.find(self.category[index]) > -1:
+						os.system("~/kill_pocketsphinx.sh")
+						rospy.sleep(1)
+						self.soundhandle.say('there are' + self.category[index + 1] + self.category[index] + 's', self.voice)
+						rospy.sleep(4)
+						self.soundhandle.say('OK I am ready for next question', self.voice)
+						rospy.sleep(3)
+						os.system("~/run_pocketsphinx.sh")
+						rospy.sleep(1)
+						self.soundhandle.playWave(self.question_start_signal + "/question_start_signal.wav")
+						rospy.sleep(2)
+						break
+			# What's the colour of the {kobject}?
+			elif msg.data.find('colour') > -1:
+				self.index=0
+				for self.index in range(len(self.object_colour)):
+					if msg.data.find(self.object_colour[self.index]) > -1:
+						os.system("~/kill_pocketsphinx.sh")
+						rospy.sleep(1)
+						self.soundhandle.say('I heared whats the colour of the '
+											 + self.object_colour[self.index], self.voice)
+						rospy.sleep(4)
+						self.soundhandle.say('the answer is ' + self.object_colour[self.index]
+											 + 'is' + self.object_colour[self.index + 1], self.voice)
+						rospy.sleep(4)
+						self.soundhandle.say('OK I am ready for next question', self.voice)
+						rospy.sleep(3)
+						os.system("~/run_pocketsphinx.sh")
+						rospy.sleep(1)
+						self.soundhandle.playWave(self.question_start_signal + "/question_start_signal.wav")
+						rospy.sleep(2)
+						break
+			# Which is the $adja (object)?
+			elif msg.data.find('which') > -1 and msg.data.find('biggest') > -1 and msg.data.find('object'):
+				os.system("~/kill_pocketsphinx.sh")
+				rospy.sleep(1)
+				self.if_say=1
+				print "111111111111111"
+				self.soundhandle.say('I heared Which is the biggest object', self.voice)
+				rospy.sleep(4)
+				self.soundhandle.say('the answer is '+self.size_order[50]+' is the biggest ', self.voice)
+				rospy.sleep(4)
+				self.soundhandle.say('OK I am ready for next question', self.voice)
+				rospy.sleep(3)
+				os.system("~/run_pocketsphinx.sh")
+				rospy.sleep(1)
+				self.soundhandle.playWave(self.question_start_signal + "/question_start_signal.wav")
+				rospy.sleep(2)
+				self.if_say=0
+			elif msg.data.find('which') > -1 and msg.data.find('smallest') > -1 and msg.data.find('object'):
+				os.system("~/kill_pocketsphinx.sh")
+				rospy.sleep(1)
+				self.soundhandle.say('I heared Which is the smallest object', self.voice)
+				rospy.sleep(4)
+				self.soundhandle.say('the answer is ' + self.size_order[0] + ' is the biggest ', self.voice)
+				rospy.sleep(4)
+				self.soundhandle.say('OK I am ready for next question', self.voice)
+				rospy.sleep(3)
+				os.system("~/run_pocketsphinx.sh")
+				rospy.sleep(1)
+				self.soundhandle.playWave(self.question_start_signal + "/question_start_signal.wav")
+				rospy.sleep(2)
+			elif msg.data.find('which') > -1 and msg.data.find('heaviest') > -1 and msg.data.find('object'):
+				os.system("~/kill_pocketsphinx.sh")
+				rospy.sleep(1)
+				self.soundhandle.say('I heared Which is the heaviest object', self.voice)
+				rospy.sleep(4)
+				self.soundhandle.say('the answer is ' + self.weight_order[96] + ' is the biggest ', self.voice)
+				rospy.sleep(4)
+				self.soundhandle.say('OK I am ready for next question', self.voice)
+				rospy.sleep(3)
+				os.system("~/run_pocketsphinx.sh")
+				rospy.sleep(1)
+				self.soundhandle.playWave(self.question_start_signal + "/question_start_signal.wav")
+				rospy.sleep(2)
+			elif msg.data.find('which') > -1 and msg.data.find('lightest') > -1 and msg.data.find('object'):
+				os.system("~/kill_pocketsphinx.sh")
+				rospy.sleep(1)
+				self.soundhandle.say('I heared Which is the lightest object', self.voice)
+				rospy.sleep(4)
+				self.soundhandle.say('the answer is '+self.weight_order[0]+' is the biggest ', self.voice)
+				rospy.sleep(4)
+				self.soundhandle.say('OK I am ready for next question', self.voice)
+				rospy.sleep(3)
+				os.system("~/run_pocketsphinx.sh")
+				rospy.sleep(1)
+				self.soundhandle.playWave(self.question_start_signal + "/question_start_signal.wav")
+				rospy.sleep(2)
+
+			#Which is the $adja({category})?
+			elif msg.data.find('which') > -1 and msg.data.find('biggest') :
+				self.index=len(self.size_order)/2
+				for self.ans_cate1 in self.category:
+					if self.ans_cate1 in self.sentence:#found which category is the operator asked
+						while(self.index>0):#倒序遍历
+							if self.size_order[2*self.index-1]==self.ans_cate1:#found the biggest {category}
+								os.system("~/kill_pocketsphinx.sh")
+								rospy.sleep(1)
+								self.soundhandle.say('I heared Which is the biggest '
+													 +self.ans_cate1, self.voice)
+								rospy.sleep(4)
+								self.soundhandle.say('the answer is '+self.size_order[2*self.index-2]
+													 +' is the biggest '+self.size_order[2*self.index-1], self.voice)
+								rospy.sleep(4)
+								self.soundhandle.say('OK I am ready for next question',self.voice)
+								rospy.sleep(3)
+								os.system("~/run_pocketsphinx.sh")
+								rospy.sleep(1)
+								self.soundhandle.playWave(self.question_start_signal+"/question_start_signal.wav")
+								rospy.sleep(2)
+								break
+							self.index-=1
+						break
+			#============================================Warning!!!!!!!!先将最大的和最重的等同于一个=======================================
+			elif msg.data.find('which') > -1 and msg.data.find('heaviest'):
+				self.index = len(self.size_order) / 2
+				for self.ans_cate2 in self.category:
+					if self.ans_cate2 in self.sentence:  # found which category is the operator asked
+						while (self.index > 0):  # 倒序遍历
+							if self.size_order[2 * self.index - 1] == self.ans_cate2:  # found the biggest {category}
+								os.system("~/kill_pocketsphinx.sh")
+								rospy.sleep(1)
+								self.soundhandle.say('I heared Which is the heaviest '
+													 + self.ans_cate2, self.voice)
+								rospy.sleep(4)
+								self.soundhandle.say('the answer is ' + self.size_order[2 * self.index - 2]
+													 + ' is the biggest ' + self.size_order[2 * self.index - 1],
+													 self.voice)
+								rospy.sleep(4)
+								self.soundhandle.say('OK I am ready for next question',self.voice)
+								rospy.sleep(3)
+								os.system("~/run_pocketsphinx.sh")
+								rospy.sleep(1)
+								self.soundhandle.playWave(self.question_start_signal+"/question_start_signal.wav")
+								rospy.sleep(2)
+								break
+							self.index -= 1
+						break
+			elif msg.data.find('which') > -1 and msg.data.find('smallest'):
+				self.index = 0
+				for self.ans_cate3 in self.category:
+					if self.ans_cate3 in self.sentence:  # found which category is the operator asked
+						while (self.index <len(self.size_order)/2):  # 正序遍历
+							if self.size_order[2*self.index+1] == self.ans_cate3:  # found the smallest {category}
+								os.system("~/kill_pocketsphinx.sh")
+								rospy.sleep(1)
+								self.soundhandle.say('I heared Which is the smallest '
+													+ self.ans_cate3, self.voice)
+								rospy.sleep(4)
+								self.soundhandle.say('the answer is ' + self.size_order[2 * self.index ]
+													+ ' is the biggest ' + self.size_order[2 * self.index +1],self.voice)
+								rospy.sleep(4)
+								self.soundhandle.say('OK I am ready for next question',self.voice)
+								rospy.sleep(3)
+								os.system("~/run_pocketsphinx.sh")
+								rospy.sleep(1)
+								self.soundhandle.playWave(self.question_start_signal+"/question_start_signal.wav")
+								rospy.sleep(2)
+								break
+							self.index += 1
+						break
+			#=================================Warning!!!!!!!先将最轻的和最小的等同于一个=========================================
+			elif msg.data.find('which') > -1 and msg.data.find('lightest'):
+				self.index = 0
+				for self.ans_cate4 in self.category:
+					if self.ans_cate4 in self.sentence:  # found which category is the operator asked
+						while (self.index < len(self.size_order) / 2):  # 正序遍历
+							if self.size_order[2 * self.index + 1] == self.ans_cate4:  # found the lightest {category}
+								os.system("~/kill_pocketsphinx.sh")
+								rospy.sleep(1)
+								self.soundhandle.say('I heared Which is the loghtest '
+													+ self.ans_cate4, self.voice)
+								rospy.sleep(4)
+								self.soundhandle.say('the answer is ' + self.size_order[2 * self.index]
+													 + ' is the ;ightest ' + self.size_order[2 * self.index + 1],
+													 self.voice)
+								rospy.sleep(4)
+								self.soundhandle.say('OK I am ready for next question',self.voice)
+								rospy.sleep(3)
+								os.system("~/run_pocketsphinx.sh")
+								rospy.sleep(1)
+								self.soundhandle.playWave(self.question_start_signal+"/question_start_signal.wav")
+								rospy.sleep(2)
+								break
+							self.index += 1
+						break
+			# What objects are stored in the {placement}?
+			#=============================================haven't finished================================
+			elif msg.data.find('what objects') > -1 or msg.data.find('are stored in'):
+				self.index = 0
+				for self.ans_place in self.weight_order:
+					if self.ans_place in self.sentence:  # found which category is the operator asked
+						while (self.index < len(self.size_order) / 2):  # 正序遍历
+							if self.size_order[2 * self.index + 1] == self.ans_cate:  # found the smallest {category}
+								os.system("~/kill_pocketsphinx.sh")
+								rospy.sleep(1)
+								self.soundhandle.say('I heared Which is the loghtest '
+													+ self.ans_cate, self.voice)
+								rospy.sleep(4)
+								self.soundhandle.say('the answer is ' + self.size_order[2 * self.index]
+													 + ' is the ;ightest ' + self.size_order[2 * self.index + 1],
+													 self.voice)
+								rospy.sleep(4)
+								self.soundhandle.say('OK I am ready for next question',self.voice)
+								rospy.sleep(3)
+								os.system("~/run_pocketsphinx.sh")
+								rospy.sleep(1)
+								self.soundhandle.playWave(self.question_start_signal+"/question_start_signal.wav")
+								rospy.sleep(2)
+								break
+							self.index += 1
+						break
+			#arena
+			# Where is located the {placement}?
+			elif msg.data.find('where is located the ') > -1 :
+				self.index = 0
+				while (self.index<len(self.location)/2):
+					if self.location[2*self.index] in self.sentence:  # found which placement was asked
+						os.system("~/kill_pocketsphinx.sh")
+						rospy.sleep(1)
+						self.soundhandle.say('I heared Where is located the '
+											 + self.location[2*self.index], self.voice)
+						rospy.sleep(4)
+						self.soundhandle.say('the answer is ' + self.location[2 * self.index]
+											 + ' is located at ' + self.location[2 * self.index + 1],
+											 self.voice)
+						rospy.sleep(4)
+						self.soundhandle.say('OK I am ready for next question', self.voice)
+						rospy.sleep(3)
+						os.system("~/run_pocketsphinx.sh")
+						rospy.sleep(1)
+						self.soundhandle.playWave(self.question_start_signal + "/question_start_signal.wav")
+						rospy.sleep(2)
+						break
+			# In which room is the {placement}?
+			elif msg.data.find('in which room is the ') > -1 :
+				self.index = 0
+				while (self.index<len(self.location)/2):
+					if self.location[2*self.index] in self.sentence:  # found which placement was asked
+						os.system("~/kill_pocketsphinx.sh")
+						rospy.sleep(1)
+						self.soundhandle.say('I heared in which room is the '
+											 + self.location[2*self.index], self.voice)
+						rospy.sleep(4)
+						self.soundhandle.say('the answer is ' + self.location[2 * self.index]
+											 + ' is in ' + self.location[2 * self.index + 1],
+											 self.voice)
+						rospy.sleep(4)
+						self.soundhandle.say('OK I am ready for next question', self.voice)
+						rospy.sleep(3)
+						os.system("~/run_pocketsphinx.sh")
+						rospy.sleep(1)
+						self.soundhandle.playWave(self.question_start_signal + "/question_start_signal.wav")
+						rospy.sleep(2)
+						break
+			# How many doors has the {room}?=============================!!!!!!!!!!!!!!!!!we dont have the num of doors!!!!!!!=========================
+			elif msg.data.find('how many doors has the ') > -1 :
+				self.index = 0
+				while (self.index<len(self.location)/2):
+					if self.location[2*self.index] in self.sentence:  # found which placement was asked
+						os.system("~/kill_pocketsphinx.sh")
+						rospy.sleep(1)
+						self.soundhandle.say('I heared in which room is the '
+											 + self.location[2*self.index], self.voice)
+						rospy.sleep(4)
+						self.soundhandle.say('the answer is ' + self.location[2 * self.index]
+											 + ' is in ' + self.location[2 * self.index + 1],
+											 self.voice)
+						rospy.sleep(4)
+						self.soundhandle.say('OK I am ready for next question', self.voice)
+						rospy.sleep(3)
+						os.system("~/run_pocketsphinx.sh")
+						rospy.sleep(1)
+						self.soundhandle.playWave(self.question_start_signal + "/question_start_signal.wav")
+						rospy.sleep(2)
+						break
+			#crowd
+			#How many $people are in the crowd?
+			elif msg.data.find('how many')>-1 and msg.data.find('in the crowd')>-1:
+				self.index=0
+				for self.ans_people in self.people:#遍历self.people,寻找他问的那个种类（是男孩还是女孩还是小孩等等）
+					if self.ans_people in self.sentence:#found it!
+						self.soundhandle.say('I heared how many '
+											 + self.ans_people+' are in the crowd ', self.voice)
+						rospy.sleep(4)
+						self.riddle_recog = rospy.Publisher("riddle_recog", String, queue_size=10)
+						self.riddle_recog.publish(self.ans_people)#self.ans_people is "children" or "male" and so on,publish what you heard to image
+						rospy.Subscriber('image_recog', String, self.answer_How_many_people_are_in_the_crowd)
+						break
+
+
+
+			#predefined question
+			elif msg.data.find('which-city-are-we-in')>-1:
+				os.system("~/kill_pocketsphinx.sh")
+				self.soundhandle.say('I heared which city are we in ', self.voice)
+				rospy.sleep(4)
+				self.soundhandle.say('the answer is Nagoya', self.voice)
+				rospy.sleep(4)
+				self.soundhandle.say('OK I am ready for next question', self.voice)
+				rospy.sleep(4)
+				os.system("~/run_pocketsphinx.sh")
+				self.soundhandle.playWave(self.question_start_signal + "/question_start_signal.wav")
+				rospy.sleep(4)
+				print('Nagoya')
+			elif msg.data.find('what-is-the-name-of-your-team')>-1:
+				os.system("~/kill_pocketsphinx.sh")
+				self.soundhandle.say('I heared what is the name of your team', self.voice)
+				rospy.sleep(4)
+				self.soundhandle.say('the answer is our team name is kamerider ', self.voice)
+				rospy.sleep(4)
+				self.soundhandle.say('OK I am ready for next question', self.voice)
+				rospy.sleep(4)
+				os.system("~/run_pocketsphinx.sh")
+				self.soundhandle.playWave(self.question_start_signal + "/question_start_signal.wav")
+				rospy.sleep(4)
+				print('our team name is kamerider')
+			elif msg.data.find('how-many-teams-participate-in-robocup-at-home-this-year')>-1:
+				os.system("~/kill_pocketsphinx.sh")
+				self.soundhandle.say('I heared how many teams participate in robocup at home this year', self.voice)
+				rospy.sleep(4)
+				self.soundhandle.say('the answer is thirty one', self.voice)
+				rospy.sleep(4)
+				self.soundhandle.say('OK I am ready for next question', self.voice)
+				rospy.sleep(4)
+				os.system("~/run_pocketsphinx.sh")
+				self.soundhandle.playWave(self.question_start_signal + "/question_start_signal.wav")
+				rospy.sleep(4)
+				print('31')
+			elif msg.data.find('who-won-the-popular-vote-in-the-us-election')>-1:
+				os.system("~/kill_pocketsphinx.sh")
+				self.soundhandle.say('I heared who won the popular vote in the us election', self.voice)
+				rospy.sleep(4)
+				self.soundhandle.say('the answer is Hillary Clinton ', self.voice)
+				rospy.sleep(4)
+				self.soundhandle.say('OK I am ready for next question', self.voice)
+				rospy.sleep(4)
+				os.system("~/run_pocketsphinx.sh")
+				self.soundhandle.playWave(self.question_start_signal + "/question_start_signal.wav")
+				rospy.sleep(4)
+				print('Hillary Clinton')
+			elif msg.data.find('what-is-the-highest-mountain-in-japan')>-1:
+				os.system("~/kill_pocketsphinx.sh")
+				self.soundhandle.say('I heared what is the highest mountain in japan', self.voice)
+				rospy.sleep(4)
+				self.soundhandle.say('the answer is Mount Fuji', self.voice)
+				rospy.sleep(4)
+				self.soundhandle.say('OK I am ready for next question', self.voice)
+				rospy.sleep(4)
+				os.system("~/run_pocketsphinx.sh")
+				self.soundhandle.playWave(self.question_start_signal + "/question_start_signal.wav")
+				rospy.sleep(4)
+				print('Mount Fuji')
+			elif msg.data.find('name-the-two-robocup-at-home-standard-platforms')>-1:
+				os.system("~/kill_pocketsphinx.sh")
+				self.soundhandle.say('I heared name the two robocup at home standard platforms', self.voice)
+				rospy.sleep(4)
+				self.soundhandle.say('the answer Pepper and HSR', self.voice)
+				rospy.sleep(4)
+				self.soundhandle.say('OK I am ready for next question', self.voice)
+				rospy.sleep(4)
+				os.system("~/run_pocketsphinx.sh")
+				self.soundhandle.playWave(self.question_start_signal + "/question_start_signal.wav")
+				rospy.sleep(4)
+				print('Pepper and HSR')
+			elif msg.data.find('what-does-dspl-stand-for')>-1:
+				os.system("~/kill_pocketsphinx.sh")
+				self.soundhandle.say('I heared what does dspl stand for', self.voice)
+				rospy.sleep(4)
+				self.soundhandle.say('the answer is Domestic Standard Platform League', self.voice)
+				rospy.sleep(4)
+				self.soundhandle.say('OK I am ready for next question', self.voice)
+				rospy.sleep(4)
+				os.system("~/run_pocketsphinx.sh")
+				self.soundhandle.playWave(self.question_start_signal + "/question_start_signal.wav")
+				rospy.sleep(4)
+				print('Domestic Standard Platform League')
+			elif msg.data.find('what-does-sspl-stand-for')>-1:
+				os.system("~/kill_pocketsphinx.sh")
+				self.soundhandle.say('I heared what does sspl stand for', self.voice)
+				rospy.sleep(4)
+				self.soundhandle.say('the answer is Social Standard Platform League', self.voice)
+				rospy.sleep(4)
+				self.soundhandle.say('OK I am ready for next question', self.voice)
+				rospy.sleep(4)
+				os.system("~/run_pocketsphinx.sh")
+				self.soundhandle.playWave(self.question_start_signal + "/question_start_signal.wav")
+				rospy.sleep(4)
+				print('Social Standard Platform League')
+			elif msg.data.find('who-did-alphabet-sell-boston-dynamics-to')>-1:
+				os.system("~/kill_pocketsphinx.sh")
+				self.soundhandle.say('I heared who did alphabet sell boston dynamics to', self.voice)
+				rospy.sleep(4)
+				self.soundhandle.say('the answer is SoftBank', self.voice)
+				rospy.sleep(4)
+				self.soundhandle.say('OK I am ready for next question', self.voice)
+				rospy.sleep(4)
+				os.system("~/run_pocketsphinx.sh")
+				self.soundhandle.playWave(self.question_start_signal + "/question_start_signal.wav")
+				rospy.sleep(4)
+				print('SoftBank')
+			elif msg.data.find('nagoya-has-one-of-the-largest-train-stations-in-the-world-how-large-is-it')>-1:
+				os.system("~/kill_pocketsphinx.sh")
+				self.soundhandle.say('I heared nagoya has one of the largest train stations in the world how large is it', self.voice)
+				rospy.sleep(4)
+				self.soundhandle.say('the answer is over 410000 square metres ', self.voice)
+				rospy.sleep(4)
+				self.soundhandle.say('OK I am ready for next question', self.voice)
+				rospy.sleep(4)
+				os.system("~/run_pocketsphinx.sh")
+				self.soundhandle.playWave(self.question_start_signal + "/question_start_signal.wav")
+				rospy.sleep(4)
+				print('over 410000 square metres')
+			elif msg.data.find('whats-your-teams-home-city')>-1:
+				os.system("~/kill_pocketsphinx.sh")
+				self.soundhandle.say('I heared whats your teams home city', self.voice)
+				rospy.sleep(4)
+				self.soundhandle.say('the answer is tianjin', self.voice)
+				rospy.sleep(4)
+				self.soundhandle.say('OK I am ready for next question', self.voice)
+				rospy.sleep(4)
+				os.system("~/run_pocketsphinx.sh")
+				self.soundhandle.playWave(self.question_start_signal + "/question_start_signal.wav")
+				rospy.sleep(4)
+				print('tianjin')
+			elif msg.data.find('who-created-star-wars')>-1:
+				os.system("~/kill_pocketsphinx.sh")
+				self.soundhandle.say('I heared who created star wars', self.voice)
+				rospy.sleep(4)
+				self.soundhandle.say('the answer is George Lucas ', self.voice)
+				rospy.sleep(4)
+				self.soundhandle.say('OK I am ready for next question', self.voice)
+				rospy.sleep(4)
+				os.system("~/run_pocketsphinx.sh")
+				self.soundhandle.playWave(self.question_start_signal + "/question_start_signal.wav")
+				rospy.sleep(4)
+				print('George Lucas')
+			elif msg.data.find('who-lives-in-a-pineapple-under-the-sea')>-1:
+				os.system("~/kill_pocketsphinx.sh")
+				self.soundhandle.say('I heared who lives in a pineapple under the sea', self.voice)
+				rospy.sleep(4)
+				self.soundhandle.say('the answer is Sponge Bob Squarepants ', self.voice)
+				rospy.sleep(4)
+				self.soundhandle.say('OK I am ready for next question', self.voice)
+				rospy.sleep(4)
+				os.system("~/run_pocketsphinx.sh")
+				self.soundhandle.playWave(self.question_start_signal + "/question_start_signal.wav")
+				rospy.sleep(4)
+				print('Sponge Bob Squarepants')
+			elif msg.data.find('what-did-grace-hopper-invent')>-1:
+				os.system("~/kill_pocketsphinx.sh")
+				self.soundhandle.say('I heared what did grace hopper invent', self.voice)
+				rospy.sleep(4)
+				self.soundhandle.say('the answer is the inventor of the first compiler ', self.voice)
+				rospy.sleep(4)
+				self.soundhandle.say('OK I am ready for next question', self.voice)
+				rospy.sleep(4)
+				os.system("~/run_pocketsphinx.sh")
+				self.soundhandle.playWave(self.question_start_signal + "/question_start_signal.wav")
+				rospy.sleep(4)
+				print('the inventor of the first compiler')
+			else:
+				print"22222222222222"
+
+		
+		
+	def cleanup(self):
+		rospy.loginfo("Shutting down spr node...")
+
+
+
+if __name__=="__main__":
+	rospy.init_node('spr')
+	try:
+		spr()
+		rospy.spin()
+	except:
+		pass
+
+
+
+
+		

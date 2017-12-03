@@ -1,0 +1,15 @@
+potato_chips
+cafe_au_lait
+potato_stick
+green_tea
+iced_tea
+potage_soup
+strawberry_juice
+apple
+cookie
+cup
+egg_soup
+grape_fruit_juice
+orange
+plate
+tray

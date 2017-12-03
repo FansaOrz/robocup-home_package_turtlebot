@@ -1,0 +1,3 @@
+# speech
+Please make sure you have installed pocketsphinx-5prealpha and sphinxbase-5prealpha.
+Replace your 'continuous.c' which is located in 

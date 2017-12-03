@@ -1,0 +1,29 @@
+<launch>
+
+  <node name="dynamixel_manager" pkg="dynamixel_controllers" type="controller_manager.py" required="true" output="screen">
+      <rosparam>
+            namespace: dxl_manager
+            serial_ports:
+                servo_joints_port:
+                    port_name: "/dev/ttyUSB0"
+                    baud_rate: 1000000
+                    min_motor_id: 1
+                    max_motor_id: 5
+                    update_rate: 20
+      </rosparam>
+  </node>
+
+  <rosparam file="$(find robocup_ap_arm)/config/joints.yaml" command="load"/>
+
+  <node name="controller_spawner" pkg="dynamixel_controllers" type="controller_spawner.py"
+        args="--manager=dxl_manager
+                --port servo_joints_port
+                arm_shoulder_pan_joint
+		arm_shoulder_lift_joint
+		arm_elbow_flex_joint
+		arm_wrist_flex_joint
+		gripper_joint"
+        output="screen"/>
+  <node name="ed_arm_carry" pkg="robocup_ap_arm" type="ed_arm_carry.py" output="screen"/>
+
+</launch>
